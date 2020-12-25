@@ -1,0 +1,52 @@
+// Source code under CC0 1.0
+#include <stdbool.h>
+
+__sfr __at(0x80) IOA;
+__sfr __at(0xb2) OEA;
+
+__sfr __at(0x88) TCON;
+__sfr __at(0x89) TMOD;
+__sfr __at(0x8a) TL0;
+__sfr __at(0x8c) TH0;
+
+__sfr __at(0xa8) IE;
+
+volatile unsigned long int clocktime;
+volatile _Bool clockupdate;
+
+void clockinc(void) __interrupt(1)
+{
+	TH0 = (65536 - 1000) / 256;
+	TL0 = (65536 - 1000) % 256;
+	clocktime++;
+	clockupdate = true;
+}
+
+unsigned long int clock(void)
+{
+	unsigned long int ctmp;
+
+	do
+	{
+		clockupdate = false;
+		ctmp = clocktime;
+	} while (clockupdate);
+	
+	return(ctmp);
+}
+
+void main(void)
+{
+	// Configure timer
+	// 1000 ticks per second
+	TH0 = (65536 - 1000) / 256;
+	TL0 = (65536 - 1000) % 256;
+	TMOD = 0x01;
+	IE |= 0x82;
+	TCON |= 0x10; // Start timer
+
+	OEA=0x03; // port A as output
+
+	for(;;)
+		IOA = ~(clock() / 1000) & 0x03;
+}
